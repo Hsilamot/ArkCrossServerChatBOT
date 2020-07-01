@@ -1,0 +1,35 @@
+{
+	"development": {
+		"DiscordClient": {
+			"autoReconnect": true,
+			"presence":{
+				"status":"Linking Chat",
+				"afk":false,
+				"activity":{
+					"name":"ARK: Survival Evolved",
+					"type":0
+				}
+			}
+		},
+		"Database": {
+			"host": "",
+			"user": "",
+			"password": "",
+			"database": ""
+		},
+		"Token": "",
+		"version": [1,0,"231t"],
+		"config_id": "development"
+	},
+	"testing": {
+		"config_id": "testing"
+	},
+	"staging": {
+		"config_id": "staging"
+	},
+	"production": {
+		"version": [1,0,231],
+		"Token": "",
+		"config_id": "production"
+	}
+}
