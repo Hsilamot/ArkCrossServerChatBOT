@@ -1,0 +1,1 @@
+﻿node --experimental-worker C:\Users\colos\source\repos\ArkCrossServerChatBOT\app.js

@@ -2,12 +2,12 @@
 	"development": {
 		"DiscordClient": {
 			"autoReconnect": true,
-			"presence":{
-				"status":"Linking Chat",
-				"afk":false,
-				"activity":{
-					"name":"ARK: Survival Evolved",
-					"type":0
+			"presence": {
+				"status": "Linking Chat",
+				"afk": false,
+				"activity": {
+					"name": "Arkadium",
+					"type": 0
 				}
 			}
 		},
@@ -15,10 +15,18 @@
 			"host": "",
 			"user": "",
 			"password": "",
-			"database": ""
+			"database": "ark_server"
 		},
-		"Token": "",
-		"version": [1,0,"231t"],
+		"HostServerDiscordId": "683392499221528824",
+		"GlobalChatChannelId": "685884134236618789",
+		"GlobalChatRoles": [
+			"Moderator",
+			"Player"
+		],
+		"PollRate": 1000,
+		"ResponsePollRate": 1000,
+		"Token": "DISCORD_TOKEN",
+		"version": [ 1, 0, "231t" ],
 		"config_id": "development"
 	},
 	"testing": {
