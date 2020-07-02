@@ -23,8 +23,8 @@
 			"Moderator",
 			"Player"
 		],
-		"PollRate": 1000,
-		"ResponsePollRate": 1000,
+		"PollRate": 250,
+		"ResponsePollRate": 250,
 		"Token": "",
 		"version": [ 1, 0, "231t" ],
 		"config_id": "development"

@@ -23,7 +23,7 @@ function handleMsg(isServer, message) {
     }
 }
 function handleServerChatMsg(message) {
-	const isAdmin = msg.member.hasPermission("ADMINISTRATOR");
+	const isAdmin = message.member.hasPermission("ADMINISTRATOR");
 	let icon = 0;
 	if (isAdmin) {
 		icon = 1;
