@@ -25,7 +25,7 @@
 		],
 		"PollRate": 1000,
 		"ResponsePollRate": 1000,
-		"Token": "DISCORD_TOKEN",
+		"Token": "",
 		"version": [ 1, 0, "231t" ],
 		"config_id": "development"
 	},

@@ -23,6 +23,12 @@ function handleMsg(isServer, message) {
     }
 }
 function handleServerChatMsg(message) {
+	const isAdmin = msg.member.hasPermission("ADMINISTRATOR");
+	let icon = 0;
+	if (isAdmin) {
+		icon = 1;
+	}
+	// If Donor icon = 2,3,4
 	const item = {
 		At: new Date().getTime(),
 		ServerKey: 'Discord',
@@ -35,12 +41,11 @@ function handleServerChatMsg(message) {
 		Message: message.content,
 		Type: 0,
 		Rcon: 0,
-		Icon: 0
+		Icon: icon
 	};
 	queuedResponses.push(item);
 }
 function handleResponses() {
-	console.log("Responses?");
 	if (!isResponding && queuedResponses.length > 0) {
 		isResponding = true;
 		console.log(queuedResponses);
@@ -76,6 +81,7 @@ function sendMsgToDiscordGlobalChat(message) {
 
 // TRIBE_DISCORDS
 // Id
+// invite_id
 // Discord_Id
 // Chat_Channel_ID
 // Tribe_Ids
