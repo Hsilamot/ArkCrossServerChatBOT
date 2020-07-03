@@ -1,4 +1,4 @@
-var mysql = require('mysql');
+﻿var mysql = require('mysql');
 const configjson = require('./config.json');
 const environment = process.env.NODE_ENV || 'development';
 const config = Object.assign(configjson['development'], configjson[environment]); ;
@@ -6,6 +6,18 @@ const Discord = require('discord.js');
 const client = new Discord.Client(config.DiscordClient);
 const { version } = require('os');
 const { link } = require('fs');
+const emojiLetters = {
+	a: '🇦', b: '🇧', c: '🇨', d: '🇩',
+	e: '🇪', f: '🇫', g: '🇬', h: '🇭',
+	i: '🇮', j: '🇯', k: '🇰', l: '🇱',
+	m: '🇲', n: '🇳', o: '🇴', p: '🇵',
+	q: '🇶', r: '🇷', s: '🇸', t: '🇹',
+	u: '🇺', v: '🇻', w: '🇼', x: '🇽',
+	y: '🇾', z: '🇿', '-': '-'
+};
+const newLine = `
+`;
+const quoteStr = "```";
 console.log('Environment is ' + environment);
 
 var connection;
@@ -16,12 +28,81 @@ let responseTimer = null;
 let isPolling = false;
 let isResponding = false;
 let queuedResponses = [];
+let lastGlobalMsg = null;
+let lastGlobalMsgStr = "";
 
+let tribeChannels = [
+	{
+		Id: 1,
+		DiscordId: "728496485171462155",
+		CanTwoWay: true,
+		TribeIds: [
+			1356756801
+		],
+		ChatInviteCode: "abc",
+		Servers: {
+			Ragnarok: {
+				ChatChannelId: "728496485699682377",
+				LastMsgString: "",
+				LastMsgRef: null
+			},
+			Aberration: {
+				ChatChannelId: "728496485699682377",
+				LastMsgString: "",
+				LastMsgRef: null
+			},
+			Crystal: {
+				ChatChannelId: "728496485699682377",
+				LastMsgString: "",
+				LastMsgRef: null
+			}
+		}
+	},
+];
+function getTribeConfigByTribeId(tribeId) {
+	return tribeId > 0 && tribeChannels.find(tribe => tribe.TribeIds.find(id => id == tribeId));
+}
+function getTribeConfigByChannelId(channelId) {
+	return channelId && tribeChannels.find(tribe => {
+		for (let serverIndex of config.ServerKeys) {
+			if (tribe.Servers[serverIndex].ChatChannelId == channelId) {
+				return true;
+            }
+        }
+	});
+}
 function handleMsg(isServer, message) {
 	if (isServer && message.channel.id === config.GlobalChatChannelId) {
 		handleServerChatMsg(message);
+	} else {
+		const tribeConfig = getTribeConfigByChannelId(message.channel.id);
+		if (tribeConfig) {
+			handleTribeChatMsg(message, tribeConfig);
+        }
     }
 }
+function handleTribeChatMsg(message, tribeConfig) {
+	console.log("Tribe Response");
+	const item = {
+		At: new Date().getTime(),
+		ServerKey: 'Discord',
+		ServerTag: 'Discord',
+		SteamId: '',
+		RecipientIds: tribeConfig.TribeIds.join(","),
+		PlayerName: message.author.username,
+		CharacterName: message.author.username,
+		TribeName: "",
+		TribeId: "",
+		Message: message.content,
+		Type: 6,
+		Rcon: 0,
+		Icon: 0
+	};
+	sendMsgToTribeDiscords(item, tribeConfig, message.channel.id);
+	message.delete();
+	queuedResponses.push(item);
+}
+
 function handleServerChatMsg(message) {
 	const isAdmin = message.member.hasPermission("ADMINISTRATOR");
 	let icon = 0;
@@ -38,23 +119,25 @@ function handleServerChatMsg(message) {
 		PlayerName: message.author.username,
 		CharacterName: message.author.username,
 		TribeName: "",
+		TribeId: "",
 		Message: message.content,
 		Type: 0,
 		Rcon: 0,
 		Icon: icon
 	};
+	addToDiscordMsgs(getChatString(item));
+	message.delete();
 	queuedResponses.push(item);
 }
 function handleResponses() {
 	if (!isResponding && queuedResponses.length > 0) {
 		isResponding = true;
-		console.log(queuedResponses);
+		console.log(`Inserting ${queuedResponses.length} Responses to db`);
 		db.query(
-				'INSERT INTO Messages (At,ServerKey,ServerTag,RecipientIds,PlayerName,CharacterName,TribeName,TribeId,Message,Type,Icon,Rcon) VALUES ?',
-			[queuedResponses.map(item => [item.At, item.ServerKey, item.ServerTag, item.RecipientIds, item.PlayerName, item.CharacterName, item.TribeName, item.TribeId, item.Message, item.Type, item.Icon, item.Rcon])],
+				'INSERT INTO Messages (At,ServerKey,ServerTag,RecipientIds,PlayerName,CharacterName,TribeName,Message,Type,Icon,Rcon) VALUES ?',
+			[queuedResponses.map(item => [item.At, item.ServerKey, item.ServerTag, item.RecipientIds, item.PlayerName, item.CharacterName, item.TribeName, item.Message, item.Type, item.Icon, item.Rcon])],
 			(error, results) => {
 				if (error) throw error;
-				console.log("Responded :)", results);
 
 				isResponding = false;
             }
@@ -62,44 +145,90 @@ function handleResponses() {
 		queuedResponses = [];
     }
 }
-
-function sendMsgToDiscordGlobalChat(message) {
+function addToDiscordMsgs(newChatStr) {
+	if (newChatStr.length == 0) return;
 	const globalDiscord = server.channels.cache.get(config.GlobalChatChannelId);
-	let globalMsg = `(${message.ServerTag})`;
-	if (message.Icon === 1) {
-		globalMsg += " [ADMIN]";
-	} else if (message.Icon > 2) {
-		globalMsg += " [VIP]";
+	if (!globalDiscord) return;
+	if (lastGlobalMsgStr.length + newChatStr.length > config.MaxMsgLength) {
+		lastGlobalMsgStr = "";
+		lastGlobalMsg = null;
+    }
+	lastGlobalMsgStr += newChatStr;
+	if (lastGlobalMsg) {
+		lastGlobalMsg.edit(`${quoteStr}md${lastGlobalMsgStr}${newLine}${quoteStr}`).then(result => {
+			lastGlobalMsg = result;
+		});
+	} else {
+		globalDiscord.send(`${quoteStr}md${lastGlobalMsgStr}${newLine}${quoteStr}`).then(result => {
+			lastGlobalMsg = result;
+		});
+    }
+}
+function emojify(str) {
+	return [...str].map(letter => (emojiLetters[letter] || letter)).join('');
+}
+function getChatString(message) {
+	if (message.Message.length == 0) return "";
+	let extraTag = '';
+	let nameTag = message.PlayerName;
+	const isTribeChat = (message.Type == 1 || message.Type == 5 || message.Type == 6);
+	if (!isTribeChat && message.Icon === 1) {
+		extraTag = " <Admin>";
+	} else if (!isTribeChat && message.Icon > 2) {
+		extraTag = " <VIP>";
 	}
-	globalMsg += " " + message.PlayerName;
 	if (message.TribeName.length > 0) {
-		globalMsg += ` [${message.TribeName}]`;
+		nameTag += ` [${message.TribeName}]`;
 	}
-	globalMsg += ": " + message.Message;
-	globalDiscord.send(globalMsg);
+	if (isTribeChat) {
+		nameTag += "(TRIBE)";
+    }
+	const d = new Date();
+
+	let timeStr = `[${d.toLocaleTimeString("it-IT").split(' ')[0]}]`;
+	const msgStr = message.Message.replace(new RegExp(quoteStr, "g"), "").replace(new RegExp(newLine, "g"), "");
+	return `${newLine}${timeStr}(${message.ServerTag})${extraTag} ${nameTag}: ${msgStr}`;
 }
-
-// TRIBE_DISCORDS
-// Id
-// invite_id
-// Discord_Id
-// Chat_Channel_ID
-// Tribe_Ids
-// Response goes to only those tribe ids regardless of recipient_ids
-
-function sendMsgToTribeDiscords(msg) {
-	// Need list of discord Ids & channel Ids to tribeIds
-	// Tribe owner only?
-	// in discord /tribeLink
-	// have your tribeOwner use "/linkTribe asdg346zxdh98dtq2w3495ASDT9hwa465a" on each map
+function sendMsgToTribeDiscords(msg, tribeConfig, channelId) {
+	const msgStr = getChatString(msg);
+	if (msgStr.length == 0 || !tribeConfig) return;
+	const tribeServer = client.guilds.cache.get(tribeConfig.DiscordId);
+	let tribeServerConfig;
+	if (channelId > 0) {
+		for (let serverIndex of config.ServerKeys) {
+			if (tribeConfig.Servers[serverIndex].ChatChannelId == channelId) {
+				tribeServerConfig = tribeConfig.Servers[serverIndex];
+				break;
+			}
+		}
+	} else {
+		tribeServerConfig = tribeConfig.Servers[msg.ServerKey];
+	}
+	const tribeChatChannel = tribeServer && tribeServerConfig && tribeServer.channels.cache.get(tribeServerConfig.ChatChannelId);
+	if (tribeChatChannel) {
+		console.log("Insert msg to tribe channel");
+		if (tribeServerConfig.LastMsgString.length + msgStr.length > config.MaxMsgLength) {
+			tribeServerConfig.LastMsgString = "";
+			tribeServerConfig.LastMsgRef = null;
+		}
+		tribeServerConfig.LastMsgString += msgStr;
+		if (tribeServerConfig.LastMsgRef) {
+			tribeServerConfig.LastMsgRef.edit(`${quoteStr}md${tribeServerConfig.LastMsgString}${newLine}${quoteStr}`).then(result => {
+				tribeServerConfig.LastMsgRef = result;
+			});
+		} else {
+			tribeChatChannel.send(`${quoteStr}md${tribeServerConfig.LastMsgString}${newLine}${quoteStr}`).then(result => {
+				tribeServerConfig.LastMsgRef = result;
+			});
+		}
+    }
 }
-
 function handleDbMsg(msg) {
 	if (msg.ServerKey !== "Discord") {
 		if (msg.Type === 0) {
-			sendMsgToDiscordGlobalChat(msg);
+			addToDiscordMsgs(getChatString(msg))
 		} else {
-			sendMsgToTribeDiscords(msg);
+			sendMsgToTribeDiscords(msg, getTribeConfigByTribeId(msg.TribeId));
 		}
 	}
 	lastMsgId = msg.Id;
@@ -112,7 +241,7 @@ function handleDbMsgs(msgs) {
 }
 function getNewMessages() {
 	isPolling = true;
-	db.query("SELECT Id,At,ServerKey,ServerTag,SteamId,RecipientIds,PlayerName,CharacterName,TribeName,Message,Type,Rcon,Icon" +
+	db.query("SELECT Id,At,ServerKey,ServerTag,SteamId,RecipientIds,PlayerName,CharacterName,TribeName,TribeId,Message,Type,Rcon,Icon" +
 		" FROM Messages WHERE Id > " + lastMsgId + " ORDER BY Id ASC;", function (err, result) {
 			if (err) throw err;
 			handleDbMsgs(result);
@@ -165,7 +294,8 @@ function reconnectDatabase() {
 	db.on('error', function (err) {
 		console.log('DB Error: ', err);
 		if (err.code === 'PROTOCOL_CONNECTION_LOST') {	// Connection to the MySQL server is usually
-			dbhandleDisconnect();						// lost due to either server restart, or a
+			console.log('DB Connection error.');
+			reconnectDatabase();						// lost due to either server restart, or a
 		} else {										// connnection idle timeout (the wait_timeout
 			throw err;									// server variable configures this)
 		}

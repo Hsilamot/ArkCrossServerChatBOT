@@ -17,15 +17,21 @@
 			"password": "",
 			"database": "ark_server"
 		},
+		"Token": "",
 		"HostServerDiscordId": "683392499221528824",
-		"GlobalChatChannelId": "685884134236618789",
+		"GlobalChatChannelId": "728437323154587688",
+		"ServerKeys": [
+			"Ragnarok",
+			"Aberration",
+			"Crystal"
+		],
 		"GlobalChatRoles": [
 			"Moderator",
 			"Player"
 		],
+		"MaxMsgLength": 2000,
 		"PollRate": 250,
 		"ResponsePollRate": 250,
-		"Token": "",
 		"version": [ 1, 0, "231t" ],
 		"config_id": "development"
 	},
